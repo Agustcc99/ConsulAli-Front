@@ -1,16 +1,21 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+// Frontend/src/api/reportesApi.js
+// IMPORTANTE:
+// - En producción (Vercel), queremos pegarle a "/api/..." para que funcione el proxy/rewrite.
+// - En desarrollo (Vite), también podés usar "/api/..." si tenés proxy o si el back corre mismo host.
+// - Esto evita hardcodear localhost y evita problemas de cookies/SameSite en iOS.
 
 async function requestJson(path) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(path, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
   });
 
-  const data = await res.json().catch(() => null);
+  const esJson = (res.headers.get("content-type") || "").includes("application/json");
+  const data = esJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
 
   if (!res.ok) {
-    const msg = data?.message || `Error HTTP ${res.status}`;
+    const msg = data?.message || data?.mensaje || `Error HTTP ${res.status}`;
     throw new Error(msg);
   }
 
