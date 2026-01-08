@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiPatch } from "./apiClient.js";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./apiClient.js";
 
 export async function obtenerTratamientos({ pacienteId, estado } = {}) {
   const params = new URLSearchParams();
@@ -22,4 +22,20 @@ export function actualizarEstadoTratamiento(id, estado) {
 
 export function obtenerResumenFinancieroTratamiento(id) {
   return apiGet(`/api/tratamientos/${id}/resumen-financiero`);
+}
+
+/**
+ * Soft delete (reversible): marca estado = "cancelado"
+ * Backend: DELETE /api/tratamientos/:id?modo=cancelar (default)
+ */
+export function cancelarTratamiento(id) {
+  return apiDelete(`/api/tratamientos/${id}?modo=cancelar`);
+}
+
+/**
+ * Hard delete (IRREVERSIBLE): borra tratamiento + pagos + gastos
+ * Backend: DELETE /api/tratamientos/:id?modo=eliminar
+ */
+export function eliminarTratamientoDefinitivo(id) {
+  return apiDelete(`/api/tratamientos/${id}?modo=eliminar`);
 }
