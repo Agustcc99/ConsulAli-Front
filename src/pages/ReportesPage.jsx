@@ -74,7 +74,7 @@ function obtenerPendiente(item, paraQuien) {
 
   // Opciones anidadas
   const v1 = item?.resumenFinanciero?.saldo?.[paraQuien];
-  if (typeof v1 === "number" && Number.isFinite(v1)) (v1);
+  if (typeof v1 === "number" && Number.isFinite(v1)) return v1;
 
   const v2 = item?.resumen?.saldo?.[paraQuien];
   if (typeof v2 === "number" && Number.isFinite(v2)) return v2;
@@ -101,6 +101,7 @@ function fechaCorta(fecha) {
   return d.toLocaleDateString("es-AR");
 }
 
+/** Rango [inicio, fin) del día local según input YYYY-MM-DD */
 function obtenerRangoDiaLocal(fechaStrYYYYMMDD) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fechaStrYYYYMMDD || ""))) return null;
   const [anio, mes, dia] = String(fechaStrYYYYMMDD).split("-").map(Number);
@@ -185,7 +186,7 @@ export default function ReportesPage() {
   const cantidadPagosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadPagosMes"], 0);
   const cantidadGastosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadGastosMes"], 0);
 
-  const totalCorrespondienteMama = leerNumeroRuta(diario, ["fotoCierreMes", "totalCorrespondienteMama"], 0) || leerNumeroRuta(
+  const totalCorrespondienteMama = leerNumeroRuta(
     mensual,
     ["fotoCierreMes", "totalCorrespondienteMama"],
     0
@@ -228,7 +229,8 @@ export default function ReportesPage() {
 
   const porMetodo = leerObjetoRuta(diario, ["cashflowDelDia", "porMetodo"], {});
   const cobradoEfectivo = typeof porMetodo.efectivo === "number" ? porMetodo.efectivo : 0;
-  const cobradoTransferencia = typeof porMetodo.transferencia === "number" ? porMetodo.transferencia : 0;
+  const cobradoTransferencia =
+    typeof porMetodo.transferencia === "number" ? porMetodo.transferencia : 0;
   const cobradoTarjeta = typeof porMetodo.tarjeta === "number" ? porMetodo.tarjeta : 0;
   const cobradoOtro = typeof porMetodo.otro === "number" ? porMetodo.otro : 0;
 
@@ -264,6 +266,7 @@ export default function ReportesPage() {
       if (!idTrat) continue;
       if (idsVistos.has(idTrat)) continue;
 
+      // Filtrado por fechaInicio (si viene) para que “bruto” sea del día elegido
       const fechaInicio = t?.fechaInicio;
       const entraPorFecha =
         fechaInicio && inicio && fin ? estaEnRangoLocal(fechaInicio, inicio, fin) : true;
@@ -357,9 +360,7 @@ export default function ReportesPage() {
             }}
           >
             <div style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 800 }}>
-                Fecha
-              </span>
+              <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 800 }}>Fecha</span>
               <input
                 type="date"
                 value={fechaDiaria}
@@ -411,62 +412,33 @@ export default function ReportesPage() {
       {error ? <ErrorMensaje mensaje={error} /> : null}
       {cargando ? <Cargando texto="Cargando reporte..." /> : null}
 
-      {/* TAB: MENSUAL */}
+      {/* ========================= */}
+      {/*  TAB: MENSUAL             */}
+      {/* ========================= */}
       {!cargando && !error && tab === "mensual" ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              gap: 10,
-            }}
-          >
-            <Tarjeta
-              titulo="Total cobrado (pacientes)"
-              valor={formatearMonedaARS(totalCobradoPacientesMes)}
-            />
-            <Tarjeta
-              titulo="Laboratorio pagado (mes)"
-              valor={formatearMonedaARS(totalPagadoLaboratorioMes)}
-            />
-            <Tarjeta
-              titulo="Saldo pendiente total pacientes"
-              valor={formatearMonedaARS(saldoPendienteTotalPacientes)}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            <Tarjeta titulo="Total cobrado (pacientes)" valor={formatearMonedaARS(totalCobradoPacientesMes)} />
+            <Tarjeta titulo="Laboratorio pagado (mes)" valor={formatearMonedaARS(totalPagadoLaboratorioMes)} />
+            <Tarjeta titulo="Saldo pendiente total pacientes" valor={formatearMonedaARS(saldoPendienteTotalPacientes)} />
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 10,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             <Tarjeta
               titulo="Mamá (mes)"
               valor={`${formatearMonedaARS(totalCobradoMama)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(
-                totalPendienteMama
-              )} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteMama)}`}
+              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteMama)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteMama)}`}
             />
             <Tarjeta
               titulo="Alicia (mes)"
               valor={`${formatearMonedaARS(totalCobradoAlicia)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(
-                totalPendienteAlicia
-              )} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteAlicia)}`}
+              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteAlicia)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteAlicia)}`}
             />
           </div>
 
           <div style={cajaBlanca}>
             <h3 style={{ marginTop: 0 }}>Actividad del mes</h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                gap: 10,
-              }}
-            >
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
               <Tarjeta titulo="Total gastos (mes)" valor={formatearMonedaARS(totalGastosMes)} />
               <Tarjeta titulo="Cantidad pagos" valor={String(cantidadPagosMes)} />
               <Tarjeta titulo="Cantidad gastos" valor={String(cantidadGastosMes)} />
@@ -482,22 +454,14 @@ export default function ReportesPage() {
         </div>
       ) : null}
 
-      {/* TAB: PENDIENTES */}
+      {/* ========================= */}
+      {/*  TAB: PENDIENTES          */}
+      {/* ========================= */}
       {!cargando && !error && tab === "pendientes" ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 10,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             <BloquePendientes titulo="Pendientes Mamá" items={pendientesMama} paraQuien="mama" />
-            <BloquePendientes
-              titulo="Pendientes Alicia"
-              items={pendientesAlicia}
-              paraQuien="alicia"
-            />
+            <BloquePendientes titulo="Pendientes Alicia" items={pendientesAlicia} paraQuien="alicia" />
           </div>
 
           {verRaw ? (
@@ -509,7 +473,9 @@ export default function ReportesPage() {
         </div>
       ) : null}
 
-      {/* TAB: DIARIO */}
+      {/* ========================= */}
+      {/*  TAB: DIARIO              */}
+      {/* ========================= */}
       {!cargando && !error && tab === "diario" ? (
         <div style={{ display: "grid", gap: 10 }}>
           {/* Resumen del día (sin Laboratorio y sin Excedente) */}
@@ -539,7 +505,14 @@ export default function ReportesPage() {
               <Tarjeta titulo="Pagar Laboratorio" valor={formatearMonedaARS(pagarLaboratorio)} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
               <Tarjeta
                 titulo="Laboratorio cubierto por pagos"
                 valor={formatearMonedaARS(laboratorioCubiertoPorPagos)}
