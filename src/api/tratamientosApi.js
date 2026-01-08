@@ -24,8 +24,18 @@ export function obtenerResumenFinancieroTratamiento(id) {
   return apiGet(`/api/tratamientos/${id}/resumen-financiero`);
 }
 
-// ✅ HARD DELETE (cascada): tratamiento + pagos + gastos
+/**
+ * HARD DELETE (cascada): borra tratamiento + pagos + gastos (IRREVERSIBLE)
+ * Back: DELETE /api/tratamientos/:id?modo=eliminar
+ */
 export function eliminarTratamientoDefinitivo(id) {
-  if (!id) throw new Error("id de tratamiento es obligatorio");
   return apiDelete(`/api/tratamientos/${id}?modo=eliminar`);
+}
+
+/**
+ * Soft delete: cancelar tratamiento (reversible si querés)
+ * Back: DELETE /api/tratamientos/:id?modo=cancelar  (default)
+ */
+export function cancelarTratamiento(id) {
+  return apiDelete(`/api/tratamientos/${id}?modo=cancelar`);
 }
