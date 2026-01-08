@@ -156,22 +156,46 @@ export default function ReportesPage() {
   // =========================
   const mensual = reporteMensual || {};
 
-  const totalCobradoPacientesMes = leerNumeroRuta(mensual, ["cashflowDelMes", "totalCobradoPacientesMes"], 0);
-  const totalPagadoLaboratorioMes = leerNumeroRuta(mensual, ["cashflowDelMes", "totalPagadoLaboratorioMes"], 0);
+  const totalCobradoPacientesMes = leerNumeroRuta(
+    mensual,
+    ["cashflowDelMes", "totalCobradoPacientesMes"],
+    0
+  );
+  const totalPagadoLaboratorioMes = leerNumeroRuta(
+    mensual,
+    ["cashflowDelMes", "totalPagadoLaboratorioMes"],
+    0
+  );
 
   const totalGastosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "totalGastosMes"], 0);
   const cantidadPagosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadPagosMes"], 0);
   const cantidadGastosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadGastosMes"], 0);
 
-  const totalCorrespondienteMama = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCorrespondienteMama"], 0);
+  const totalCorrespondienteMama = leerNumeroRuta(
+    mensual,
+    ["fotoCierreMes", "totalCorrespondienteMama"],
+    0
+  );
   const totalCobradoMama = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCobradoMama"], 0);
   const totalPendienteMama = leerNumeroRuta(mensual, ["fotoCierreMes", "totalPendienteMama"], 0);
 
-  const totalCorrespondienteAlicia = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCorrespondienteAlicia"], 0);
+  const totalCorrespondienteAlicia = leerNumeroRuta(
+    mensual,
+    ["fotoCierreMes", "totalCorrespondienteAlicia"],
+    0
+  );
   const totalCobradoAlicia = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCobradoAlicia"], 0);
-  const totalPendienteAlicia = leerNumeroRuta(mensual, ["fotoCierreMes", "totalPendienteAlicia"], 0);
+  const totalPendienteAlicia = leerNumeroRuta(
+    mensual,
+    ["fotoCierreMes", "totalPendienteAlicia"],
+    0
+  );
 
-  const saldoPendienteTotalPacientes = leerNumeroRuta(mensual, ["fotoCierreMes", "saldoPendienteTotalPacientes"], 0);
+  const saldoPendienteTotalPacientes = leerNumeroRuta(
+    mensual,
+    ["fotoCierreMes", "saldoPendienteTotalPacientes"],
+    0
+  );
 
   // =========================
   //  PENDIENTES (según tu JSON real)
@@ -193,6 +217,17 @@ export default function ReportesPage() {
   const cobradoOtro = typeof porMetodo.otro === "number" ? porMetodo.otro : 0;
 
   const paraLaboratorio = leerNumeroRuta(diario, ["separacionDelDia", "paraLaboratorio"], 0);
+  const laboratorioCubiertoPorPagos = leerNumeroRuta(
+    diario,
+    ["separacionDelDia", "laboratorioCubiertoPorPagos"],
+    0
+  );
+  const laboratorioPendiente = leerNumeroRuta(
+    diario,
+    ["separacionDelDia", "laboratorioPendiente"],
+    0
+  );
+
   const paraMama = leerNumeroRuta(diario, ["separacionDelDia", "paraMama"], 0);
   const paraAlicia = leerNumeroRuta(diario, ["separacionDelDia", "paraAlicia"], 0);
   const excedente = leerNumeroRuta(diario, ["separacionDelDia", "excedente"], 0);
@@ -249,14 +284,30 @@ export default function ReportesPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "end",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <h2 style={{ margin: 0 }}>Reportes</h2>
           <p style={{ margin: "6px 0 0", color: "#6b7280" }}>Mensual, pendientes y cierre diario.</p>
         </div>
 
         {tab === "diario" ? (
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
             <div style={{ display: "grid", gap: 4 }}>
               <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 800 }}>Fecha</span>
               <input
@@ -325,12 +376,16 @@ export default function ReportesPage() {
             <Tarjeta
               titulo="Mamá (mes)"
               valor={`${formatearMonedaARS(totalCobradoMama)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteMama)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteMama)}`}
+              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteMama)} · Correspondiente: ${formatearMonedaARS(
+                totalCorrespondienteMama
+              )}`}
             />
             <Tarjeta
               titulo="Alicia (mes)"
               valor={`${formatearMonedaARS(totalCobradoAlicia)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteAlicia)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteAlicia)}`}
+              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteAlicia)} · Correspondiente: ${formatearMonedaARS(
+                totalCorrespondienteAlicia
+              )}`}
             />
           </div>
 
@@ -379,8 +434,12 @@ export default function ReportesPage() {
           {/* Resumen rápido del día */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             <Tarjeta titulo="Total cobrado hoy" valor={formatearMonedaARS(totalCobradoPacientesDia)} />
-            <Tarjeta titulo="Para laboratorio (separar)" valor={formatearMonedaARS(paraLaboratorio)} />
-            <Tarjeta titulo="Excedente" valor={formatearMonedaARS(excedente)} ayuda="Si el pago supera lo que faltaba cubrir." />
+            <Tarjeta titulo="Pagar Laboratorio" valor={formatearMonedaARS(paraLaboratorio)} />
+            <Tarjeta
+              titulo="Excedente"
+              valor={formatearMonedaARS(excedente)}
+              ayuda="Si el pago supera lo que faltaba cubrir."
+            />
           </div>
 
           {/* Por método */}
@@ -397,13 +456,39 @@ export default function ReportesPage() {
           {/* Separación del día */}
           <div style={cajaBlanca}>
             <h3 style={{ marginTop: 0 }}>Separación sugerida del día</h3>
+
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
               <Tarjeta titulo="Para Mamá" valor={formatearMonedaARS(paraMama)} />
               <Tarjeta titulo="Para Alicia" valor={formatearMonedaARS(paraAlicia)} />
-              <Tarjeta titulo="Para Laboratorio" valor={formatearMonedaARS(paraLaboratorio)} />
+              <Tarjeta titulo="Pagar Laboratorio" valor={formatearMonedaARS(paraLaboratorio)} />
             </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
+              <Tarjeta
+                titulo="Laboratorio cubierto por pagos"
+                valor={formatearMonedaARS(laboratorioCubiertoPorPagos)}
+              />
+              <Tarjeta
+                titulo="Laboratorio no cubierto por pagos"
+                valor={formatearMonedaARS(laboratorioPendiente)}
+              />
+              <Tarjeta
+                titulo="Excedente"
+                valor={formatearMonedaARS(excedente)}
+                ayuda="Si el pago supera lo que faltaba cubrir."
+              />
+            </div>
+
             <div style={{ marginTop: 10, color: "#6b7280", fontSize: 12 }}>
-              Esto sale del **waterfall** (lab → mamá → Alicia) aplicando los pagos del día sobre cada tratamiento.
+              Pagar Laboratorio se calcula a partir de los gastos de laboratorio cargados en el día. La separación por
+              pagos usa el waterfall (lab → mamá → Alicia) aplicando los pagos del día sobre cada tratamiento.
             </div>
           </div>
 
