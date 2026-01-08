@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { obtenerPacientes, obtenerResumenPaciente } from "../api/pacientesApi.js";
 import { eliminarTratamientoDefinitivo } from "../api/tratamientosApi.js";
 import Cargando from "../components/Cargando.jsx";
@@ -40,7 +40,6 @@ function FilaDato({ etiqueta, valor }) {
 
 export default function PacienteDetallePage() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const [resumen, setResumen] = useState(null);
   const [paciente, setPaciente] = useState(null);
@@ -48,11 +47,9 @@ export default function PacienteDetallePage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const [borrandoId, setBorrandoId] = useState("");
-
   async function recargarResumen() {
-    const rResumen = await obtenerResumenPaciente(id);
-    setResumen(rResumen);
+    const data = await obtenerResumenPaciente(id);
+    setResumen(data);
   }
 
   useEffect(() => {
@@ -96,16 +93,14 @@ export default function PacienteDetallePage() {
     };
   }, [id]);
 
-  async function handleEliminarTratamiento(idTrat) {
-    if (!idTrat) return;
-
+  async function handleEliminarTratamiento(idTrat, descripcion) {
     const ok = window.confirm(
-      "Eliminar tratamiento definitivamente?\nSe borran también sus pagos y gastos.\nEsta acción no se puede deshacer."
+      `Vas a eliminar definitivamente este tratamiento:\n\n${descripcion || "Tratamiento"}\n\nEsto borra también sus pagos y gastos. ¿Confirmás?`
     );
     if (!ok) return;
 
+    setCargando(true);
     setError("");
-    setBorrandoId(String(idTrat));
 
     try {
       await eliminarTratamientoDefinitivo(idTrat);
@@ -113,7 +108,7 @@ export default function PacienteDetallePage() {
     } catch (e) {
       setError(e?.message || "No se pudo eliminar el tratamiento.");
     } finally {
-      setBorrandoId("");
+      setCargando(false);
     }
   }
 
@@ -134,18 +129,18 @@ export default function PacienteDetallePage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
         <div>
           <h2 style={{ margin: 0 }}>Paciente</h2>
-          <p style={{ margin: "6px 0 0", color: "#6b7280" }}>Resumen y tratamientos del paciente.</p>
+          <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
+            Resumen y tratamientos del paciente.
+          </p>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" style={estiloBotonSecundario} onClick={() => navigate(-1)}>
-            Volver
-          </button>
+          <Link to="/pacientes" style={{ textDecoration: "none" }}>
+            <button type="button" style={estiloBotonSecundario}>Volver</button>
+          </Link>
 
           <Link to={`/pacientes/${id}/tratamientos/nuevo`} style={{ textDecoration: "none" }}>
-            <button type="button" style={estiloBotonPrimario}>
-              Nuevo tratamiento
-            </button>
+            <button type="button" style={estiloBotonPrimario}>Nuevo tratamiento</button>
           </Link>
         </div>
       </div>
@@ -189,33 +184,29 @@ export default function PacienteDetallePage() {
                         </span>
 
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
-                          Precio: {formatearMonedaARS(t.precioPaciente ?? 0)} · Pagado:{" "}
-                          {formatearMonedaARS(r.totalPagado ?? 0)} · Lab real:{" "}
-                          {formatearMonedaARS(r.labReal ?? 0)}
+                          Precio: {formatearMonedaARS(t.precioPaciente ?? 0)} ·
+                          Pagado: {formatearMonedaARS(r.totalPagado ?? 0)} ·
+                          Lab real: {formatearMonedaARS(r.labReal ?? 0)}
                         </span>
 
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
-                          Saldo paciente: {formatearMonedaARS(r?.saldo?.paciente ?? 0)} · Saldo mamá:{" "}
-                          {formatearMonedaARS(r?.saldo?.mama ?? 0)} · Saldo Alicia:{" "}
-                          {formatearMonedaARS(r?.saldo?.alicia ?? 0)}
+                          Saldo paciente: {formatearMonedaARS(r?.saldo?.paciente ?? 0)} ·
+                          Saldo mamá: {formatearMonedaARS(r?.saldo?.mama ?? 0)} ·
+                          Saldo Alicia: {formatearMonedaARS(r?.saldo?.alicia ?? 0)}
                         </span>
                       </div>
 
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 8 }}>
                         <Link to={`/tratamientos/${idTrat}`} style={{ textDecoration: "none" }}>
-                          <button type="button" style={estiloBotonSecundario}>
-                            Ver
-                          </button>
+                          <button type="button" style={estiloBotonSecundario}>Ver</button>
                         </Link>
 
                         <button
                           type="button"
                           style={estiloBotonPeligro}
-                          onClick={() => handleEliminarTratamiento(idTrat)}
-                          disabled={borrandoId === String(idTrat)}
-                          title="Elimina también pagos y gastos del tratamiento"
+                          onClick={() => handleEliminarTratamiento(idTrat, t.descripcion)}
                         >
-                          {borrandoId === String(idTrat) ? "Borrando..." : "Borrar"}
+                          Borrar
                         </button>
                       </div>
                     </div>
@@ -284,7 +275,7 @@ const estiloBotonPeligro = {
   borderRadius: 12,
   border: "1px solid #ef4444",
   background: "white",
-  color: "#ef4444",
+  color: "#b91c1c",
   fontWeight: 900,
   cursor: "pointer",
 };
