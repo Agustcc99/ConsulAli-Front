@@ -102,7 +102,7 @@ export default function TratamientoDetallePage() {
   const saldo = resumen?.saldo || {};
   const control = resumen?.control || {};
 
-  // ✅ Distribución POR PAGO (waterfall acumulado)
+  // Distribución POR PAGO (waterfall acumulado)
   const distribucionPorPago = useMemo(() => {
     const objetivoLab = objetivo?.lab ?? 0;
     const objetivoMama = objetivo?.mama ?? 0;

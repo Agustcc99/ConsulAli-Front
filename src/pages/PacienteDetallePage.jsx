@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { obtenerPacientes, obtenerResumenPaciente } from "../api/pacientesApi.js";
+import { eliminarTratamientoDefinitivo } from "../api/tratamientosApi.js";
 import Cargando from "../components/Cargando.jsx";
 import ErrorMensaje from "../components/ErrorMensaje.jsx";
 import { formatearMonedaARS } from "../utils/moneda.js";
@@ -46,47 +47,72 @@ export default function PacienteDetallePage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
+  const [cargandoEliminarId, setCargandoEliminarId] = useState("");
+
+  async function recargarTodo() {
+    setCargando(true);
+    setError("");
+    setPaciente(null);
+
+    const [rResumen, rPacientes] = await Promise.allSettled([
+      obtenerResumenPaciente(id),
+      obtenerPacientes(),
+    ]);
+
+    if (rResumen.status === "fulfilled") {
+      setResumen(rResumen.value);
+    } else {
+      setError(rResumen.reason?.message || "No se pudo cargar el resumen del paciente.");
+      setResumen(null);
+    }
+
+    if (rPacientes.status === "fulfilled") {
+      const lista = rPacientes.value;
+      const encontrado = Array.isArray(lista)
+        ? lista.find((p) => String(p?._id || p?.id) === String(id))
+        : null;
+      setPaciente(encontrado || null);
+    } else {
+      // No bloqueamos la pantalla: si falla esta parte, igual podés ver el resumen
+      setPaciente(null);
+    }
+
+    setCargando(false);
+  }
+
   useEffect(() => {
     let cancelado = false;
 
-    async function cargarTodo() {
-      setCargando(true);
-      setError("");
-      setPaciente(null);
-
-      const [rResumen, rPacientes] = await Promise.allSettled([
-        obtenerResumenPaciente(id),
-        obtenerPacientes(),
-      ]);
-
+    async function cargar() {
       if (cancelado) return;
-
-      if (rResumen.status === "fulfilled") {
-        setResumen(rResumen.value);
-      } else {
-        setError(rResumen.reason?.message || "No se pudo cargar el resumen del paciente.");
-        setResumen(null);
-      }
-
-      if (rPacientes.status === "fulfilled") {
-        const lista = rPacientes.value;
-        const encontrado = Array.isArray(lista)
-          ? lista.find((p) => String(p?._id || p?.id) === String(id))
-          : null;
-        setPaciente(encontrado || null);
-      } else {
-        // No bloqueamos la pantalla: si falla esta parte, igual podés ver el resumen
-        setPaciente(null);
-      }
-
-      setCargando(false);
+      await recargarTodo();
     }
 
-    cargarTodo();
+    cargar();
     return () => {
       cancelado = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function onEliminarTratamiento(idTrat, descripcion) {
+    const ok = window.confirm(
+      `Vas a eliminar este tratamiento definitivamente (también borra pagos y gastos).\n\nTratamiento: ${descripcion || "Tratamiento"}\n\n¿Confirmás?`
+    );
+    if (!ok) return;
+
+    setError("");
+    setCargandoEliminarId(String(idTrat));
+
+    try {
+      await eliminarTratamientoDefinitivo(idTrat);
+      await recargarTodo();
+    } catch (e) {
+      setError(e?.message || "No se pudo eliminar el tratamiento.");
+    } finally {
+      setCargandoEliminarId("");
+    }
+  }
 
   const totales = resumen?.totales || {};
   const saldoPaciente = totales?.saldoPaciente ?? 0;
@@ -105,18 +131,20 @@ export default function PacienteDetallePage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
         <div>
           <h2 style={{ margin: 0 }}>Paciente</h2>
-          <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
-            Resumen y tratamientos del paciente.
-          </p>
+          <p style={{ margin: "6px 0 0", color: "#6b7280" }}>Resumen y tratamientos del paciente.</p>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
           <Link to="/pacientes" style={{ textDecoration: "none" }}>
-            <button type="button" style={estiloBotonSecundario}>Volver</button>
+            <button type="button" style={estiloBotonSecundario} disabled={cargando}>
+              Volver
+            </button>
           </Link>
 
           <Link to={`/pacientes/${id}/tratamientos/nuevo`} style={{ textDecoration: "none" }}>
-            <button type="button" style={estiloBotonPrimario}>Nuevo tratamiento</button>
+            <button type="button" style={estiloBotonPrimario} disabled={cargando}>
+              Nuevo tratamiento
+            </button>
           </Link>
         </div>
       </div>
@@ -126,7 +154,7 @@ export default function PacienteDetallePage() {
 
       {!cargando && resumen ? (
         <>
-          {/* ✅ Teléfono / Observaciones (solo si existen) */}
+          {/* Teléfono / Observaciones (solo si existen) */}
           {mostrarDatosPaciente ? (
             <div style={cajaBlanca}>
               <h3 style={{ marginTop: 0, marginBottom: 8 }}>Datos del paciente</h3>
@@ -151,31 +179,47 @@ export default function PacienteDetallePage() {
                   const t = item?.tratamiento || {};
                   const r = item?.resumenFinanciero || {};
                   const idTrat = t?._id || t?.id;
+                  const estaEliminando = String(cargandoEliminarId) === String(idTrat);
 
                   return (
                     <div key={idTrat} style={fila}>
                       <div style={{ display: "grid", gap: 2 }}>
                         <strong>{t.descripcion || "Tratamiento"}</strong>
+
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
                           {fechaCorta(t.fechaInicio)} · Estado: {t.estado}
                         </span>
 
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
-                          Precio: {formatearMonedaARS(t.precioPaciente ?? 0)} ·
-                          Pagado: {formatearMonedaARS(r.totalPagado ?? 0)} ·
-                          Lab real: {formatearMonedaARS(r.labReal ?? 0)}
+                          Precio: {formatearMonedaARS(t.precioPaciente ?? 0)} · Pagado:{" "}
+                          {formatearMonedaARS(r.totalPagado ?? 0)} · Lab real:{" "}
+                          {formatearMonedaARS(r.labReal ?? 0)}
                         </span>
 
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
-                          Saldo paciente: {formatearMonedaARS(r?.saldo?.paciente ?? 0)} ·
-                          Saldo mamá: {formatearMonedaARS(r?.saldo?.mama ?? 0)} ·
-                          Saldo Alicia: {formatearMonedaARS(r?.saldo?.alicia ?? 0)}
+                          Saldo paciente: {formatearMonedaARS(r?.saldo?.paciente ?? 0)} · Saldo mamá:{" "}
+                          {formatearMonedaARS(r?.saldo?.mama ?? 0)} · Saldo Alicia:{" "}
+                          {formatearMonedaARS(r?.saldo?.alicia ?? 0)}
                         </span>
                       </div>
 
-                      <Link to={`/tratamientos/${idTrat}`} style={{ textDecoration: "none" }}>
-                        <button type="button" style={estiloBotonSecundario}>Ver</button>
-                      </Link>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <Link to={`/tratamientos/${idTrat}`} style={{ textDecoration: "none" }}>
+                          <button type="button" style={estiloBotonSecundario} disabled={estaEliminando || cargando}>
+                            Ver
+                          </button>
+                        </Link>
+
+                        <button
+                          type="button"
+                          style={estiloBotonPeligro}
+                          onClick={() => onEliminarTratamiento(idTrat, t.descripcion)}
+                          disabled={estaEliminando || cargando}
+                          title="Elimina el tratamiento definitivamente (incluye pagos y gastos)"
+                        >
+                          {estaEliminando ? "Eliminando..." : "Eliminar"}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -233,6 +277,16 @@ const estiloBotonSecundario = {
   border: "1px solid #e5e7eb",
   background: "white",
   color: "#111827",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const estiloBotonPeligro = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid #ef4444",
+  background: "white",
+  color: "#ef4444",
   fontWeight: 800,
   cursor: "pointer",
 };
