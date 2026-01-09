@@ -49,12 +49,7 @@ function obtenerTextoPaciente(item) {
 }
 
 function obtenerTextoTratamiento(item) {
-  return (
-    item?.tratamiento?.descripcion ||
-    item?.descripcion ||
-    item?.tipo ||
-    "Tratamiento"
-  );
+  return item?.tratamiento?.descripcion || item?.descripcion || item?.tipo || "Tratamiento";
 }
 
 /**
@@ -123,6 +118,8 @@ export default function ReportesPage() {
     mes: hoy.getMonth() + 1,
   });
 
+  const { anio, mes } = filtro;
+
   const [tab, setTab] = useState("mensual"); // "mensual" | "pendientes" | "diario"
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -144,10 +141,10 @@ export default function ReportesPage() {
 
       try {
         if (tab === "mensual") {
-          const data = await obtenerReporteMensual(filtro);
+          const data = await obtenerReporteMensual({ anio, mes });
           if (!cancelado) setReporteMensual(data);
         } else if (tab === "pendientes") {
-          const data = await obtenerPendientes(filtro);
+          const data = await obtenerPendientes({ anio, mes });
           if (!cancelado) setPendientes(data);
         } else {
           const data = await obtenerReporteDiario({ fecha: fechaDiaria });
@@ -164,7 +161,7 @@ export default function ReportesPage() {
     return () => {
       cancelado = true;
     };
-  }, [filtro.anio, filtro.mes, tab, fechaDiaria]);
+  }, [anio, mes, tab, fechaDiaria]);
 
   // =========================
   //  MENSUAL
@@ -176,6 +173,7 @@ export default function ReportesPage() {
     ["cashflowDelMes", "totalCobradoPacientesMes"],
     0
   );
+
   const totalPagadoLaboratorioMes = leerNumeroRuta(
     mensual,
     ["cashflowDelMes", "totalPagadoLaboratorioMes"],
@@ -186,12 +184,12 @@ export default function ReportesPage() {
   const cantidadPagosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadPagosMes"], 0);
   const cantidadGastosMes = leerNumeroRuta(mensual, ["cashflowDelMes", "cantidadGastosMes"], 0);
 
+  // Foto cierre (acumulado al cierre del mes)
   const totalCorrespondienteMama = leerNumeroRuta(
     mensual,
     ["fotoCierreMes", "totalCorrespondienteMama"],
     0
   );
-  const totalCobradoMama = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCobradoMama"], 0);
   const totalPendienteMama = leerNumeroRuta(mensual, ["fotoCierreMes", "totalPendienteMama"], 0);
 
   const totalCorrespondienteAlicia = leerNumeroRuta(
@@ -199,7 +197,6 @@ export default function ReportesPage() {
     ["fotoCierreMes", "totalCorrespondienteAlicia"],
     0
   );
-  const totalCobradoAlicia = leerNumeroRuta(mensual, ["fotoCierreMes", "totalCobradoAlicia"], 0);
   const totalPendienteAlicia = leerNumeroRuta(
     mensual,
     ["fotoCierreMes", "totalPendienteAlicia"],
@@ -211,6 +208,10 @@ export default function ReportesPage() {
     ["fotoCierreMes", "saldoPendienteTotalPacientes"],
     0
   );
+
+  // ✅ Cobrado DEL MES (waterfall SOLO con pagos dentro del mes)
+  const cobradoMamaMes = leerNumeroRuta(mensual, ["distribucionDelMes", "paraMama"], 0);
+  const cobradoAliciaMes = leerNumeroRuta(mensual, ["distribucionDelMes", "paraAlicia"], 0);
 
   // =========================
   //  PENDIENTES
@@ -417,28 +418,59 @@ export default function ReportesPage() {
       {/* ========================= */}
       {!cargando && !error && tab === "mensual" ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-            <Tarjeta titulo="Total cobrado (pacientes)" valor={formatearMonedaARS(totalCobradoPacientesMes)} />
-            <Tarjeta titulo="Laboratorio pagado (mes)" valor={formatearMonedaARS(totalPagadoLaboratorioMes)} />
-            <Tarjeta titulo="Saldo pendiente total pacientes" valor={formatearMonedaARS(saldoPendienteTotalPacientes)} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
+            <Tarjeta
+              titulo="Total cobrado (pacientes)"
+              valor={formatearMonedaARS(totalCobradoPacientesMes)}
+            />
+            <Tarjeta
+              titulo="Laboratorio pagado (mes)"
+              valor={formatearMonedaARS(totalPagadoLaboratorioMes)}
+            />
+            <Tarjeta
+              titulo="Saldo pendiente total pacientes"
+              valor={formatearMonedaARS(saldoPendienteTotalPacientes)}
+            />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
             <Tarjeta
               titulo="Mamá (mes)"
-              valor={`${formatearMonedaARS(totalCobradoMama)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteMama)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteMama)}`}
+              valor={`${formatearMonedaARS(cobradoMamaMes)} cobrado`}
+              ayuda={`Pendiente: ${formatearMonedaARS(
+                totalPendienteMama
+              )} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteMama)}`}
             />
             <Tarjeta
               titulo="Alicia (mes)"
-              valor={`${formatearMonedaARS(totalCobradoAlicia)} cobrado`}
-              ayuda={`Pendiente: ${formatearMonedaARS(totalPendienteAlicia)} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteAlicia)}`}
+              valor={`${formatearMonedaARS(cobradoAliciaMes)} cobrado`}
+              ayuda={`Pendiente: ${formatearMonedaARS(
+                totalPendienteAlicia
+              )} · Correspondiente: ${formatearMonedaARS(totalCorrespondienteAlicia)}`}
             />
           </div>
 
           <div style={cajaBlanca}>
             <h3 style={{ marginTop: 0 }}>Actividad del mes</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
               <Tarjeta titulo="Total gastos (mes)" valor={formatearMonedaARS(totalGastosMes)} />
               <Tarjeta titulo="Cantidad pagos" valor={String(cantidadPagosMes)} />
               <Tarjeta titulo="Cantidad gastos" valor={String(cantidadGastosMes)} />
@@ -459,9 +491,19 @@ export default function ReportesPage() {
       {/* ========================= */}
       {!cargando && !error && tab === "pendientes" ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
             <BloquePendientes titulo="Pendientes Mamá" items={pendientesMama} paraQuien="mama" />
-            <BloquePendientes titulo="Pendientes Alicia" items={pendientesAlicia} paraQuien="alicia" />
+            <BloquePendientes
+              titulo="Pendientes Alicia"
+              items={pendientesAlicia}
+              paraQuien="alicia"
+            />
           </div>
 
           {verRaw ? (
@@ -479,7 +521,13 @@ export default function ReportesPage() {
       {!cargando && !error && tab === "diario" ? (
         <div style={{ display: "grid", gap: 10 }}>
           {/* Resumen del día (sin Laboratorio y sin Excedente) */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
             <Tarjeta titulo="Cobro neto" valor={formatearMonedaARS(cobroNeto)} />
             <Tarjeta titulo="Cobro bruto" valor={formatearMonedaARS(cobroBruto)} />
           </div>
@@ -487,9 +535,18 @@ export default function ReportesPage() {
           {/* Por método */}
           <div style={cajaBlanca}>
             <h3 style={{ marginTop: 0 }}>En mano hoy (por método)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
               <Tarjeta titulo="Efectivo" valor={formatearMonedaARS(cobradoEfectivo)} />
-              <Tarjeta titulo="Transferencia" valor={formatearMonedaARS(cobradoTransferencia)} />
+              <Tarjeta
+                titulo="Transferencia"
+                valor={formatearMonedaARS(cobradoTransferencia)}
+              />
               <Tarjeta titulo="Tarjeta" valor={formatearMonedaARS(cobradoTarjeta)} />
               <Tarjeta titulo="Otro" valor={formatearMonedaARS(cobradoOtro)} />
             </div>
@@ -499,7 +556,13 @@ export default function ReportesPage() {
           <div style={cajaBlanca}>
             <h3 style={{ marginTop: 0 }}>Separación sugerida del día</h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
               <Tarjeta titulo="Para Mamá" valor={formatearMonedaARS(paraMama)} />
               <Tarjeta titulo="Para Alicia" valor={formatearMonedaARS(paraAlicia)} />
               <Tarjeta titulo="Pagar Laboratorio" valor={formatearMonedaARS(pagarLaboratorio)} />
@@ -535,9 +598,11 @@ export default function ReportesPage() {
                   const tratamientoId = p.tratamientoId;
                   const pacienteId = p.pacienteId;
 
-                  const nota = `De este pago: ${formatearMonedaARS(asg.paraLab)} lab + ${formatearMonedaARS(
-                    asg.paraMama
-                  )} mamá + ${formatearMonedaARS(asg.paraAlicia)} Alicia${
+                  const nota = `De este pago: ${formatearMonedaARS(
+                    asg.paraLab
+                  )} lab + ${formatearMonedaARS(asg.paraMama)} mamá + ${formatearMonedaARS(
+                    asg.paraAlicia
+                  )} Alicia${
                     asg.excedente > 0 ? ` (+ ${formatearMonedaARS(asg.excedente)} excedente)` : ""
                   }`;
 
@@ -592,7 +657,9 @@ export default function ReportesPage() {
 }
 
 function BloquePendientes({ titulo, items, paraQuien }) {
-  const ordenados = [...items].sort((a, b) => obtenerPendiente(b, paraQuien) - obtenerPendiente(a, paraQuien));
+  const ordenados = [...items].sort(
+    (a, b) => obtenerPendiente(b, paraQuien) - obtenerPendiente(a, paraQuien)
+  );
 
   return (
     <div style={cajaBlanca}>
@@ -613,7 +680,10 @@ function BloquePendientes({ titulo, items, paraQuien }) {
                   <span style={{ fontSize: 12, color: "#6b7280" }}>{descripcion}</span>
 
                   {tratamientoId ? (
-                    <Link to={`/tratamientos/${tratamientoId}`} style={{ fontSize: 12, marginTop: 4 }}>
+                    <Link
+                      to={`/tratamientos/${tratamientoId}`}
+                      style={{ fontSize: 12, marginTop: 4 }}
+                    >
                       Ver tratamiento →
                     </Link>
                   ) : null}
