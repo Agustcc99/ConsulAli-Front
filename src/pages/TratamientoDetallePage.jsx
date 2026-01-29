@@ -60,7 +60,6 @@ export default function TratamientoDetallePage() {
   const [tipoGasto, setTipoGasto] = useState("laboratorio");
   const [descripcionGasto, setDescripcionGasto] = useState("");
   const [montoGastoTexto, setMontoGastoTexto] = useState("");
-  const [pagadoGasto, setPagadoGasto] = useState(false);
   const [guardandoGasto, setGuardandoGasto] = useState(false);
 
   const montoPagoRef = useRef(null);
@@ -109,9 +108,7 @@ export default function TratamientoDetallePage() {
     const objetivoAlicia = objetivo?.alicia ?? 0;
 
     // orden cronológico
-    const pagosOrdenados = [...pagos].sort(
-      (a, b) => new Date(a.fecha) - new Date(b.fecha)
-    );
+    const pagosOrdenados = [...pagos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
     let cubiertoLab = 0;
     let cubiertoMama = 0;
@@ -242,12 +239,11 @@ export default function TratamientoDetallePage() {
         tipo: tipoGasto,
         descripcion: descripcionGasto.trim() || undefined,
         monto,
-        pagado: !!pagadoGasto,
+        // ✅ ya no usamos "pagado"
       });
 
       setDescripcionGasto("");
       setMontoGastoTexto("");
-      setPagadoGasto(false);
 
       await cargar();
     } catch (e2) {
@@ -334,11 +330,10 @@ export default function TratamientoDetallePage() {
               ayuda={`${cantidadGastosLab} gasto(s) lab · Total gastos: ${formatearMonedaARS(totalGastosLocal)}`}
             />
             <Tarjeta
-              titulo="Mamá (limpio)"
+              titulo="Mamá"
               valor={formatearMonedaARS(objetivo?.mama ?? 0)}
-              ayuda="Se ajusta automáticamente si cambia el laboratorio."
             />
-            <Tarjeta titulo="Alicia (fijo)" valor={formatearMonedaARS(objetivo?.alicia ?? 0)} />
+            <Tarjeta titulo="Alicia" valor={formatearMonedaARS(objetivo?.alicia ?? 0)} />
           </div>
 
           {/* Pagado por partes */}
@@ -351,7 +346,7 @@ export default function TratamientoDetallePage() {
           {/* Aviso de lab faltante */}
           {mostrarAvisoLabFaltante ? (
             <div style={alertaAmarilla}>
-              ⚠️ Todavía no cargaste el laboratorio. Cuando lo cargues, el “Mamá (limpio)” puede cambiar.
+              ⚠️ Todavía no cargaste el laboratorio. Cuando lo cargues, los objetivos pueden cambiar.
               <div style={{ marginTop: 8 }}>
                 <button type="button" style={botonPrimario} onClick={abrirFormGastoLab}>
                   Cargar gasto de lab
@@ -371,10 +366,7 @@ export default function TratamientoDetallePage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 10, color: "#6b7280", fontSize: 12 }}>
-              Diferencia: <b>{control?.diferencia ?? 0}</b> · Ajuste aplicado a:{" "}
-              <b>{tratamiento?.reglaAjuste || "mama"}</b>
-            </div>
+            {/* ✅ Se eliminó: Diferencia / Ajuste aplicado */}
           </div>
 
           {/* Acciones rápidas */}
@@ -480,7 +472,6 @@ export default function TratamientoDetallePage() {
                             {p.notas ? ` · ${p.notas}` : ""}
                           </span>
 
-                          {/* ✅ Nota de distribución por pago */}
                           <span style={{ fontSize: 12, color: "#6b7280" }}>
                             Distribución de este pago:{" "}
                             <b>Lab</b> {formatearMonedaARS(dist.paraLab)} ·{" "}
@@ -542,10 +533,7 @@ export default function TratamientoDetallePage() {
                     style={input}
                   />
 
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 800 }}>
-                    <input type="checkbox" checked={pagadoGasto} onChange={(e) => setPagadoGasto(e.target.checked)} />
-                    Ya pagado
-                  </label>
+                  {/* ✅ Se eliminó: Ya pagado */}
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -580,11 +568,14 @@ export default function TratamientoDetallePage() {
                         <strong>{formatearMonedaARS(g.monto ?? 0)}</strong>
                         <span style={{ fontSize: 12, color: "#6b7280" }}>
                           {fechaCorta(g.fecha)} · {g.tipo}
-                          {g.pagado ? " · pagado" : ""}
                           {g.descripcion ? ` · ${g.descripcion}` : ""}
                         </span>
                       </div>
-                      <button type="button" style={botonPeligro} onClick={() => confirmarEliminarGasto(g._id || g.id)}>
+                      <button
+                        type="button"
+                        style={botonPeligro}
+                        onClick={() => confirmarEliminarGasto(g._id || g.id)}
+                      >
                         Eliminar
                       </button>
                     </div>
@@ -626,8 +617,16 @@ function Chip({ label, ok, saldo }) {
   const esOk = ok === true;
   const fondo = esOk ? "#dcfce7" : "#fee2e2";
   return (
-    <span style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid #e5e7eb", background: fondo, fontWeight: 900 }}>
-      {label}: {esOk ? "✅" : "❌"} ({formatearMonedaARS(saldo ?? 0)})
+    <span
+      style={{
+        padding: "6px 10px",
+        borderRadius: 999,
+        border: "1px solid #e5e7eb",
+        background: fondo,
+        fontWeight: 900,
+      }}
+    >
+      {label}: {esOk ? "OK" : "Pendiente"} ({formatearMonedaARS(saldo ?? 0)})
     </span>
   );
 }
