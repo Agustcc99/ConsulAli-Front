@@ -24,8 +24,6 @@ export default function TratamientoFormPage() {
   const [descripcion, setDescripcion] = useState("");
 
   const [precioPacienteTexto, setPrecioPacienteTexto] = useState("");
-  const [montoMamaTexto, setMontoMamaTexto] = useState("");
-  const [montoAliciaTexto, setMontoAliciaTexto] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -40,21 +38,16 @@ export default function TratamientoFormPage() {
     if (!descripcionLimpia) return setError("La descripción es obligatoria.");
 
     const precioPaciente = convertirEnteroNoNegativo(precioPacienteTexto);
-    const montoMama = convertirEnteroNoNegativo(montoMamaTexto);
-    const montoAlicia = convertirEnteroNoNegativo(montoAliciaTexto);
-
     if (precioPaciente === null) return setError("precioPaciente debe ser un número entero >= 0");
-    if (montoMama === null) return setError("montoMama debe ser un número entero >= 0");
-    if (montoAlicia === null) return setError("montoAlicia debe ser un número entero >= 0");
 
     const payload = {
       pacienteId,
       tipo,
       descripcion: descripcionLimpia,
       precioPaciente,
-      montoMama,
-      montoAlicia,
-      reglaAjuste: "mama", // si lab cambia, ajusta mamá
+      // Ya no mandamos montoMama/montoAlicia.
+      // Se calcula con: laboratorio (gastos) primero y luego neto 70/30.
+      reglaAjuste: "mama", // compat (si lo seguís guardando); hoy no afecta el cálculo nuevo
     };
 
     setCargando(true);
@@ -75,7 +68,8 @@ export default function TratamientoFormPage() {
       <div>
         <h2 style={{ margin: 0 }}>Nuevo tratamiento</h2>
         <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
-          El laboratorio se calcula con gastos. Si el lab sube, se ajusta el monto de mamá.
+          El laboratorio se calcula con gastos. Primero se cubre laboratorio y luego el neto se reparte 70/30
+          (70% mamá, 30% Alicia).
         </p>
       </div>
 
@@ -87,16 +81,16 @@ export default function TratamientoFormPage() {
           <div>
             <label style={label}>Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={input}>
+              {/*Valores válidos según enum del backend */}
               <option value="endodoncia">Endodoncia</option>
-              <option value="perno">Zirconio</option>
-              <option value="Limpieza">Limpieza</option>
+              <option value="perno">Perno / Zirconio</option>
               <option value="ambos">Ambos</option>
-              <option value="otro">Otro</option>
+              <option value="otro">Limpieza / Otro</option>
             </select>
           </div>
 
           <div style={{ color: "#6b7280", fontSize: 12, alignSelf: "end" }}>
-            Regla ajuste: <b>Mamá</b> (automática)
+            Distribución: <b>Lab</b> → <b>Neto 70/30</b>
           </div>
         </div>
 
@@ -117,40 +111,19 @@ export default function TratamientoFormPage() {
               value={precioPacienteTexto}
               onChange={(e) => setPrecioPacienteTexto(e.target.value)}
               inputMode="numeric"
-              placeholder="Ej: 360000"
+              placeholder="Ej: 380000"
               style={input}
             />
-          </div>
-
-          <div>
-            <label style={label}>Monto mamá (base)</label>
-            <input
-              value={montoMamaTexto}
-              onChange={(e) => setMontoMamaTexto(e.target.value)}
-              inputMode="numeric"
-              placeholder="Ej: 200000"
-              style={input}
-            />
-          </div>
-
-          <div>
-            <label style={label}>Monto Alicia</label>
-            <input
-              value={montoAliciaTexto}
-              onChange={(e) => setMontoAliciaTexto(e.target.value)}
-              inputMode="numeric"
-              placeholder="Ej: 100000"
-              style={input}
-            />
-          </div>
-
-          <div style={{ color: "#6b7280", fontSize: 12, alignSelf: "end" }}>
-            * Lab real sale de Gastos (laboratorio)
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button type="button" style={botonSecundario} onClick={() => navigate(-1)} disabled={cargando}>
+          <button
+            type="button"
+            style={botonSecundario}
+            onClick={() => navigate(-1)}
+            disabled={cargando}
+          >
             Cancelar
           </button>
           <button type="submit" style={botonPrimario} disabled={cargando}>
@@ -162,9 +135,47 @@ export default function TratamientoFormPage() {
   );
 }
 
-const cajaBlanca = { background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, display: "grid", gap: 10 };
-const grid2 = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 };
+const cajaBlanca = {
+  background: "white",
+  border: "1px solid #e5e7eb",
+  borderRadius: 14,
+  padding: 12,
+  display: "grid",
+  gap: 10,
+};
+
+const grid2 = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+};
+
 const label = { fontWeight: 800, display: "block", marginBottom: 6 };
-const input = { width: "100%", padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", outline: "none" };
-const botonPrimario = { padding: "10px 12px", borderRadius: 12, border: "1px solid #111827", background: "#111827", color: "white", fontWeight: 800, cursor: "pointer" };
-const botonSecundario = { padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "white", color: "#111827", fontWeight: 800, cursor: "pointer" };
+
+const input = {
+  width: "100%",
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  outline: "none",
+};
+
+const botonPrimario = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid #111827",
+  background: "#111827",
+  color: "white",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const botonSecundario = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  background: "white",
+  color: "#111827",
+  fontWeight: 800,
+  cursor: "pointer",
+};
