@@ -90,7 +90,7 @@ export default function TratamientoFormPage() {
           </div>
 
           <div style={{ color: "#6b7280", fontSize: 12, alignSelf: "end" }}>
-            Distribución: <b>Lab</b> → <b>Neto 70/30</b>
+            Distribución: <b>Lab</b> → <b></b>
           </div>
         </div>
 
