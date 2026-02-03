@@ -68,8 +68,8 @@ export default function TratamientoFormPage() {
       <div>
         <h2 style={{ margin: 0 }}>Nuevo tratamiento</h2>
         <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
-          El laboratorio se calcula con gastos. Primero se cubre laboratorio y luego el neto se reparte 70/30
-          (70% mamá, 30% Alicia).
+          El laboratorio se calcula con gastos. Primero se cubre laboratorio y luego el neto se reparte 
+          (b)
         </p>
       </div>
 
