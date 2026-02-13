@@ -24,6 +24,7 @@ export default function TratamientoFormPage() {
   const [descripcion, setDescripcion] = useState("");
 
   const [precioPacienteTexto, setPrecioPacienteTexto] = useState("");
+  const [montoAliciaTexto, setMontoAliciaTexto] = useState(""); // ✅ nuevo
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -40,14 +41,22 @@ export default function TratamientoFormPage() {
     const precioPaciente = convertirEnteroNoNegativo(precioPacienteTexto);
     if (precioPaciente === null) return setError("precioPaciente debe ser un número entero >= 0");
 
+    const montoAlicia = convertirEnteroNoNegativo(montoAliciaTexto);
+    if (montoAlicia === null) return setError("montoAlicia debe ser un número entero >= 0");
+
     const payload = {
       pacienteId,
       tipo,
       descripcion: descripcionLimpia,
       precioPaciente,
-      // Ya no mandamos montoMama/montoAlicia.
-      // Se calcula con: laboratorio (gastos) primero y luego neto 70/30.
-      reglaAjuste: "mama", // compat (si lo seguís guardando); hoy no afecta el cálculo nuevo
+
+      // ✅ Modelo actual del consultorio:
+      // - Alicia fija (manual)
+      // - Mamá se calcula como residuo en el backend: precio - lab - alicia
+      montoAlicia,
+      montoMama: 0,
+
+      reglaAjuste: "mama", // compat (no afecta tu cálculo actual si ya lo cambiaste)
     };
 
     setCargando(true);
@@ -68,8 +77,8 @@ export default function TratamientoFormPage() {
       <div>
         <h2 style={{ margin: 0 }}>Nuevo tratamiento</h2>
         <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
-          El laboratorio se calcula con gastos. Primero se cubre laboratorio y luego el neto se reparte 
-          (b)
+          Distribución: <b>Lab</b> → <b>Mamá</b> → <b>Alicia</b>. <br />
+          Objetivo Mamá = <b>Precio paciente</b> - <b>Laboratorio</b> - <b>Monto Alicia</b>.
         </p>
       </div>
 
@@ -81,7 +90,6 @@ export default function TratamientoFormPage() {
           <div>
             <label style={label}>Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={input}>
-              {/*Valores válidos según enum del backend */}
               <option value="endodoncia">Endodoncia</option>
               <option value="perno">Perno / Zirconio</option>
               <option value="ambos">Ambos</option>
@@ -90,7 +98,7 @@ export default function TratamientoFormPage() {
           </div>
 
           <div style={{ color: "#6b7280", fontSize: 12, alignSelf: "end" }}>
-            Distribución: <b>Lab</b> → <b></b>
+            Cobro: <b>Lab</b> → <b>Mamá</b> → <b>Alicia</b>
           </div>
         </div>
 
@@ -115,15 +123,21 @@ export default function TratamientoFormPage() {
               style={input}
             />
           </div>
+
+          <div>
+            <label style={label}>Monto Alicia (fijo)</label>
+            <input
+              value={montoAliciaTexto}
+              onChange={(e) => setMontoAliciaTexto(e.target.value)}
+              inputMode="numeric"
+              placeholder="Ej: 120000"
+              style={input}
+            />
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button
-            type="button"
-            style={botonSecundario}
-            onClick={() => navigate(-1)}
-            disabled={cargando}
-          >
+          <button type="button" style={botonSecundario} onClick={() => navigate(-1)} disabled={cargando}>
             Cancelar
           </button>
           <button type="submit" style={botonPrimario} disabled={cargando}>

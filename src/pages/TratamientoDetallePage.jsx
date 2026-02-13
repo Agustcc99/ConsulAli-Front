@@ -3,7 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import Cargando from "../components/Cargando.jsx";
 import ErrorMensaje from "../components/ErrorMensaje.jsx";
 import { formatearMonedaARS } from "../utils/moneda.js";
-import { obtenerResumenFinancieroTratamiento } from "../api/tratamientosApi.js";
+import {
+  obtenerResumenFinancieroTratamiento,
+  actualizarTratamiento,
+} from "../api/tratamientosApi.js";
 import { crearPago, eliminarPago } from "../api/pagosApi.js";
 import { crearGasto, eliminarGasto } from "../api/gastosApi.js";
 
@@ -65,12 +68,19 @@ export default function TratamientoDetallePage() {
   const montoPagoRef = useRef(null);
   const montoGastoRef = useRef(null);
 
+  // ✅ Edición monto Alicia
+  const [montoAliciaTexto, setMontoAliciaTexto] = useState("");
+  const [guardandoAlicia, setGuardandoAlicia] = useState(false);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     setError("");
     try {
       const res = await obtenerResumenFinancieroTratamiento(id);
       setData(res);
+
+      const montoAliciaActual = res?.tratamiento?.montoAlicia ?? 0;
+      setMontoAliciaTexto(String(montoAliciaActual));
     } catch (e) {
       setError(e?.message || "No se pudo cargar el resumen del tratamiento.");
     } finally {
@@ -99,16 +109,17 @@ export default function TratamientoDetallePage() {
   const objetivo = resumen?.objetivo || {};
   const pagado = resumen?.pagado || {};
   const saldo = resumen?.saldo || {};
-  const control = resumen?.control || {};
 
-  // Distribución POR PAGO (waterfall acumulado)
+  // Distribución POR PAGO (waterfall acumulado) - orden: Lab -> Mamá -> Alicia
   const distribucionPorPago = useMemo(() => {
     const objetivoLab = objetivo?.lab ?? 0;
     const objetivoMama = objetivo?.mama ?? 0;
     const objetivoAlicia = objetivo?.alicia ?? 0;
 
     // orden cronológico
-    const pagosOrdenados = [...pagos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    const pagosOrdenados = [...pagos].sort(
+      (a, b) => new Date(a.fecha) - new Date(b.fecha)
+    );
 
     let cubiertoLab = 0;
     let cubiertoMama = 0;
@@ -168,7 +179,8 @@ export default function TratamientoDetallePage() {
   const mamaCubierta = (saldo?.mama ?? 0) <= 0;
   const aliciaCubierta = (saldo?.alicia ?? 0) <= 0;
 
-  const mostrarAvisoLabFaltante = hayPagos && labReal === 0 && cantidadGastosLab === 0;
+  const mostrarAvisoLabFaltante =
+    hayPagos && labReal === 0 && cantidadGastosLab === 0;
 
   function abrirConfirmacion({ titulo, mensaje, onConfirm }) {
     setConfirmacion({ abierta: true, titulo, mensaje, onConfirm });
@@ -239,7 +251,6 @@ export default function TratamientoDetallePage() {
         tipo: tipoGasto,
         descripcion: descripcionGasto.trim() || undefined,
         monto,
-        // ✅ ya no usamos "pagado"
       });
 
       setDescripcionGasto("");
@@ -286,6 +297,33 @@ export default function TratamientoDetallePage() {
     setTimeout(() => montoGastoRef.current?.focus(), 50);
   }
 
+  // ✅ Guardar monto Alicia (solo si NO hay pagos)
+  async function onGuardarMontoAlicia(e) {
+    e.preventDefault();
+    setError("");
+
+    if (hayPagos) {
+      return setError("No se puede cambiar el monto de Alicia si ya hay pagos cargados.");
+    }
+
+    const montoAlicia = convertirEnteroNoNegativo(montoAliciaTexto);
+    if (montoAlicia === null) return setError("montoAlicia debe ser un entero >= 0");
+
+    setGuardandoAlicia(true);
+    try {
+      await actualizarTratamiento(id, {
+        montoAlicia,
+        // ✅ forzamos manual para que siempre se respete este monto
+        modoDistribucion: "manual",
+      });
+      await cargar();
+    } catch (e2) {
+      setError(e2?.message || "No se pudo guardar el monto de Alicia.");
+    } finally {
+      setGuardandoAlicia(false);
+    }
+  }
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {/* Header */}
@@ -329,17 +367,41 @@ export default function TratamientoDetallePage() {
               valor={formatearMonedaARS(labReal)}
               ayuda={`${cantidadGastosLab} gasto(s) lab · Total gastos: ${formatearMonedaARS(totalGastosLocal)}`}
             />
-            <Tarjeta
-              titulo="Mamá"
-              valor={formatearMonedaARS(objetivo?.mama ?? 0)}
-            />
+            <Tarjeta titulo="Mamá" valor={formatearMonedaARS(objetivo?.mama ?? 0)} />
             <Tarjeta titulo="Alicia" valor={formatearMonedaARS(objetivo?.alicia ?? 0)} />
+          </div>
+
+          {/* ✅ Editar monto Alicia */}
+          <div style={cajaBlanca}>
+            <h3 style={{ marginTop: 0, marginBottom: 8 }}>Monto Alicia (manual)</h3>
+
+            {!hayPagos ? (
+              <form onSubmit={onGuardarMontoAlicia} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  value={montoAliciaTexto}
+                  onChange={(e) => setMontoAliciaTexto(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="Ej: 120000"
+                  style={{ ...input, maxWidth: 260 }}
+                />
+                <button type="submit" style={botonPrimario} disabled={guardandoAlicia}>
+                  {guardandoAlicia ? "Guardando..." : "Guardar"}
+                </button>
+                <span style={{ color: "#6b7280", fontSize: 12 }}>
+                  Se puede editar solo mientras no haya pagos.
+                </span>
+              </form>
+            ) : (
+              <div style={{ color: "#6b7280", fontSize: 12 }}>
+                No editable porque ya hay pagos cargados.
+              </div>
+            )}
           </div>
 
           {/* Pagado por partes */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             <Tarjeta titulo="Pagado lab" valor={formatearMonedaARS(pagado?.lab ?? 0)} />
-            <Tarjeta titulo="Pagado mamá" valor={formatearMonedaARS(pagado?.mama ?? 0)} />
+            <Tarjeta titulo="Pagado mamá" value={undefined} valor={formatearMonedaARS(pagado?.mama ?? 0)} />
             <Tarjeta titulo="Pagado Alicia" valor={formatearMonedaARS(pagado?.alicia ?? 0)} />
           </div>
 
@@ -360,13 +422,11 @@ export default function TratamientoDetallePage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <h3 style={{ marginTop: 0, marginBottom: 0 }}>Cobertura</h3>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Chip label="Lab" ok={labCubierto} saldo={saldo?.lab} />
-                <Chip label="Mamá" ok={mamaCubierta} saldo={saldo?.mama} />
-                <Chip label="Alicia" ok={aliciaCubierta} saldo={saldo?.alicia} />
+                <Chip label="Lab" ok={(saldo?.lab ?? 0) <= 0} saldo={saldo?.lab} />
+                <Chip label="Mamá" ok={(saldo?.mama ?? 0) <= 0} saldo={saldo?.mama} />
+                <Chip label="Alicia" ok={(saldo?.alicia ?? 0) <= 0} saldo={saldo?.alicia} />
               </div>
             </div>
-
-            {/* ✅ Se eliminó: Diferencia / Ajuste aplicado */}
           </div>
 
           {/* Acciones rápidas */}
@@ -532,8 +592,6 @@ export default function TratamientoDetallePage() {
                     placeholder="Descripción (opcional)"
                     style={input}
                   />
-
-                  {/* ✅ Se eliminó: Ya pagado */}
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
